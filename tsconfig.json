@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": false, // Temporarily disabled for development
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "noImplicitAny": false, // Temporarily disabled
+    "strictNullChecks": false, // Temporarily disabled
+    "strictFunctionTypes": false, // Temporarily disabled
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false, // Temporarily disabled
+    "exactOptionalPropertyTypes": false, // Temporarily disabled
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@/api/*": ["api/*"],
+      "@/core/*": ["core/*"],
+      "@/infrastructure/*": ["infrastructure/*"],
+      "@/mcp/*": ["mcp/*"],
+      "@/utils/*": ["utils/*"],
+      "@/config/*": ["config/*"],
+      "@/types/*": ["types/*"]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "frontend",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
