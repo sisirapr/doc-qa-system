@@ -1,12 +1,96 @@
-import { Document, DocumentChunk, EmbeddedChunk, SearchQuery, SearchResult } from '../../types';
-
-// MCP Tool Input/Output Types
-export interface GoogleDriveListFilesInput {
-  folderId?: string;
-  mimeTypes?: string[];
-  maxResults?: number;
+/**
+ * MCP Error class
+ */
+export class MCPError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public statusCode: number,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'MCPError';
+  }
 }
 
+/**
+ * Document chunk and embed input
+ */
+export interface DocumentChunkAndEmbedInput {
+  documentId: string;
+  content: string;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  mimeType?: string;
+}
+
+/**
+ * Embedded chunk metadata
+ */
+export interface EmbeddedChunkMetadata {
+  chunkIndex: number;
+  totalChunks: number;
+}
+
+/**
+ * Embedded chunk
+ */
+export interface EmbeddedChunk {
+  id: string;
+  documentId: string;
+  content: string;
+  index: number;
+  startOffset: number;
+  endOffset: number;
+  vector: number[];
+  metadata: EmbeddedChunkMetadata;
+}
+
+/**
+ * Document chunk and embed output
+ */
+export interface DocumentChunkAndEmbedOutput {
+  documentId: string;
+  chunks: EmbeddedChunk[];
+  processingTimeMs: number;
+}
+
+/**
+ * Vector similarity search input
+ */
+export interface VectorSimilaritySearchInput {
+  query: string;
+  limit?: number;
+  threshold?: number;
+  filters?: Record<string, any>;
+}
+
+/**
+ * Vector similarity search output
+ */
+export interface VectorSimilaritySearchOutput {
+  results: Array<{
+    id: string;
+    score: number;
+    content: string;
+    metadata: Record<string, any>;
+  }>;
+  totalResults: number;
+  processingTimeMs: number;
+}
+
+/**
+ * Google Drive list files input
+ */
+export interface GoogleDriveListFilesInput {
+  folderId?: string;
+  maxResults?: number;
+  mimeTypes?: string[];
+}
+
+/**
+ * Google Drive list files output
+ */
 export interface GoogleDriveListFilesOutput {
   files: Array<{
     id: string;
@@ -20,11 +104,17 @@ export interface GoogleDriveListFilesOutput {
   nextPageToken?: string;
 }
 
+/**
+ * Google Drive download file input
+ */
 export interface GoogleDriveDownloadFileInput {
   fileId: string;
   mimeType?: string;
 }
 
+/**
+ * Google Drive download file output
+ */
 export interface GoogleDriveDownloadFileOutput {
   fileId: string;
   fileName: string;
@@ -38,108 +128,51 @@ export interface GoogleDriveDownloadFileOutput {
   };
 }
 
-export interface DocumentChunkAndEmbedInput {
-  documentId: string;
-  content: string;
-  mimeType: string;
-  chunkSize?: number;
-  chunkOverlap?: number;
-}
-
-export interface DocumentChunkAndEmbedOutput {
-  documentId: string;
-  chunks: EmbeddedChunk[];
-  totalChunks: number;
-  embeddingModel: string;
-  dimensions: number;
-}
-
-export interface VectorSimilaritySearchInput {
-  query: string;
-  limit?: number;
-  threshold?: number;
-  filters?: Record<string, any>;
-}
-
-export interface VectorSimilaritySearchOutput {
-  results: SearchResult[];
-  totalResults: number;
-  processingTimeMs: number;
-}
-
-export interface DocumentQAQueryInput {
-  query: string;
-  documentIds?: string[];
-  maxResults?: number;
-  temperature?: number;
-}
-
-export interface DocumentQAQueryOutput {
-  answer: string;
-  sources: Array<{
-    documentId: string;
-    documentName: string;
-    content: string;
-    score: number;
-  }>;
-  metadata: {
-    model: string;
-    tokensUsed: number;
-    processingTimeMs: number;
-  };
-}
-
-// MCP Resource Types
-export interface GoogleDriveAuthResource {
-  authUrl: string;
-  tokenInfo?: {
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: number;
-  };
-}
-
-export interface DocumentResource {
-  id: string;
-  name: string;
-  mimeType: string;
-  size: number;
-  createdAt: string;
-  updatedAt: string;
-  metadata: Record<string, any>;
-}
-
-export interface VectorCollectionResource {
-  name: string;
-  dimensions: number;
-  distance: string;
-  vectorCount: number;
-  indexingStatus: 'indexing' | 'ready' | 'failed';
-}
-
-// MCP Error Types
-export class MCPError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public statusCode: number = 500,
-    public details?: any
-  ) {
-    super(message);
-    this.name = 'MCPError';
-  }
-}
-
-// Circuit Breaker Types
+/**
+ * Circuit breaker configuration
+ */
 export interface CircuitBreakerConfig {
   failureThreshold: number;
   recoveryTimeout: number;
   monitoringWindow: number;
 }
 
+/**
+ * Circuit breaker state
+ */
 export interface CircuitBreakerState {
   status: 'closed' | 'open' | 'half-open';
   failures: number;
   lastFailure: number | null;
   nextAttempt: number | null;
+}
+
+/**
+ * Document Q&A query input
+ */
+export interface DocumentQAQueryInput {
+  query: string;
+  maxResults?: number;
+  filters?: Record<string, any>;
+  temperature?: number;
+  documentIds?: string[];
+}
+
+/**
+ * Document Q&A source
+ */
+export interface DocumentQASource {
+  documentId: string;
+  documentName: string;
+  content: string;
+  score: number;
+}
+
+/**
+ * Document Q&A query output
+ */
+export interface DocumentQAQueryOutput {
+  answer: string;
+  sources: DocumentQASource[];
+  processingTimeMs: number;
 }

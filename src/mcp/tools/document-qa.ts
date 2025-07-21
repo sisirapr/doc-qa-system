@@ -26,7 +26,7 @@ export async function documentQAQuery(
     
     // Step 1: Find relevant document chunks using vector search
     const [searchResults, searchTime] = await measureExecutionTime(async () => {
-      const filters = input.documentIds ? { 'document.id': input.documentIds } : {};
+      const filters = input.documentIds ? { 'metadata.documentId': input.documentIds } : {};
       
       const searchResponse = await vectorSimilaritySearch({
         query: input.query,
@@ -43,7 +43,7 @@ export async function documentQAQuery(
     // Step 2: Generate answer using LLM
     const [answer, llmTime] = await measureExecutionTime(async () => {
       // Prepare context from search results
-      const context = prepareContext(searchResults.map(result => result.chunk.content));
+      const context = prepareContext(searchResults.map(result => result.content));
       
       // This is a placeholder for actual LLM call
       // In a real implementation, this would call an LLM API like OpenAI
@@ -54,21 +54,16 @@ export async function documentQAQuery(
     
     // Prepare sources for response
     const sources = searchResults.map(result => ({
-      documentId: result.document.id,
-      documentName: result.document.name,
-      content: result.chunk.content,
+      documentId: result.metadata.documentId,
+      documentName: result.metadata.documentName,
+      content: result.content,
       score: result.score
     }));
     
     return {
       answer,
       sources,
-      metadata: {
-        model: 'mock-llm-model', // In a real implementation, this would be the actual model name
-        tokensUsed: estimateTokenCount(input.query) + estimateTokenCount(answer) + 
-                   sources.reduce((acc, source) => acc + estimateTokenCount(source.content), 0),
-        processingTimeMs: searchTime + llmTime
-      }
+      processingTimeMs: searchTime + llmTime
     };
   } catch (error) {
     console.error('Error performing document Q&A:', error);
@@ -152,19 +147,4 @@ async function mockLLMGeneration(
   await new Promise(resolve => setTimeout(resolve, 500));
   
   return answers[answerIndex];
-}
-
-/**
- * Estimate token count from text
- * @param text Text to estimate tokens for
- * @returns Estimated token count
- */
-function estimateTokenCount(text: string | undefined): number {
-  // Handle undefined or empty text
-  if (!text) return 0;
-  
-  // This is a very rough estimate
-  // In a real implementation, this would use a proper tokenizer
-  // A common rule of thumb is ~4 characters per token for English text
-  return Math.ceil(text.length / 4);
 }

@@ -1,12 +1,12 @@
 import { google, drive_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '../../config/environment';
-import {
+import { MCPError } from '../types/mcp-types';
+import type {
   GoogleDriveDownloadFileInput,
   GoogleDriveDownloadFileOutput,
   GoogleDriveListFilesInput,
-  GoogleDriveListFilesOutput,
-  MCPError
+  GoogleDriveListFilesOutput
 } from '../types/mcp-types';
 import {
   CircuitBreaker,

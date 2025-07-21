@@ -122,14 +122,20 @@ The following functionalities are still using mock data:
      }'
    ```
 
-2. **Vector Search**
-   - Vector similarity search uses mock data instead of querying a real vector database
+2. **Vector Search** (Working with Real Data)
+   - Vector similarity search uses Qdrant vector database
+   - Supports real-time vector search with cosine similarity
+   - Includes automatic collection initialization and management
    ```bash
    curl -X POST http://localhost:3001/tools/vector_similarity_search \
      -H "Content-Type: application/json" \
      -d '{
        "query": "vector database",
-       "limit": 3
+       "limit": 3,
+       "threshold": 0.7,
+       "filters": {
+         "metadata.mime_type": "application/pdf"
+       }
      }'
    ```
 
