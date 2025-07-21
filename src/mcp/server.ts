@@ -2,9 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import { json } from 'body-parser';
 import { tools, ToolName } from './tools';
-import { createError } from './utils/mcp-helpers';
-import { env } from '../config/environment';
 import { MCPError } from './types/mcp-types';
+import { env } from '../config/environment';
+import { generateAuthUrl, getTokensFromCode, setCredentials } from './tools/google-drive';
+import { createError } from './utils/mcp-helpers';
 
 // Create Express app
 const app = express();
@@ -19,11 +20,145 @@ app.use(json({ limit: '10mb' }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({
+  res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
+});
+
+// Google Drive OAuth2 endpoints
+app.post('/auth/google-drive/set-credentials', (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      throw new MCPError('Refresh token is required', 'INVALID_INPUT', 400);
+    }
+    
+    setCredentials(refreshToken);
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'OAuth2 credentials set successfully'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: 'google_drive_auth'
+      }
+    });
+  } catch (error) {
+    console.error('Error setting credentials:', error);
+    
+    if (error instanceof MCPError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: {
+          message: error.message,
+          code: error.code
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          tool: 'google_drive_auth'
+        }
+      });
+      return;
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to set credentials',
+        code: 'INTERNAL_SERVER_ERROR'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: 'google_drive_auth'
+      }
+    });
+  }
+});
+
+app.get('/auth/google-drive/url', (req, res) => {
+  try {
+    const authUrl = generateAuthUrl();
+    res.json({
+      success: true,
+      data: { authUrl },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: 'google_drive_auth'
+      }
+    });
+  } catch (error) {
+    console.error('Error generating auth URL:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to generate auth URL',
+        code: 'AUTH_URL_GENERATION_FAILED'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: 'google_drive_auth'
+      }
+    });
+  }
+});
+
+app.get('/auth/google-drive/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code || typeof code !== 'string') {
+      throw new MCPError('Authorization code is required', 'INVALID_INPUT', 400);
+    }
+    
+    const tokens = await getTokensFromCode(code);
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'Successfully authenticated with Google Drive',
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresAt
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: 'google_drive_auth'
+      }
+    });
+  } catch (error) {
+    console.error('Error in auth callback:', error);
+    
+    if (error instanceof MCPError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: {
+          message: error.message,
+          code: error.code
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          tool: 'google_drive_auth'
+        }
+      });
+      return;
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        message: 'Authentication failed',
+        code: 'AUTHENTICATION_FAILED'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        tool: 'google_drive_auth'
+      }
+    });
+  }
 });
 
 // Tool execution endpoint

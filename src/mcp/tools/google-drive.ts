@@ -23,6 +23,8 @@ const oauth2Client = new OAuth2Client(
   env.GOOGLE_DRIVE_REDIRECT_URI
 );
 
+// Initialize OAuth2 client
+console.log('Google Drive OAuth2 client initialized');
 // Circuit breaker for Google Drive API
 const circuitBreaker = new CircuitBreaker();
 
@@ -168,15 +170,38 @@ export async function googleDriveDownloadFile(
       // Download file content
       const [fileContent, downloadTime] = await measureExecutionTime(async () => {
         return await withRetry(async () => {
-          const response = await drive.files.get({
-            fileId: input.fileId,
-            alt: 'media',
-            ...(input.mimeType ? { mimeType: input.mimeType } : {})
-          }, {
-            responseType: 'arraybuffer'
-          });
-          
-          return Buffer.from(response.data as ArrayBuffer);
+          // Handle Google Workspace files (Docs, Sheets, Slides)
+          if (fileMetadata.mimeType?.startsWith('application/vnd.google-apps.')) {
+            // Map Google Workspace formats to export formats
+            const exportFormats: { [key: string]: string } = {
+              'application/vnd.google-apps.document': 'application/pdf',
+              'application/vnd.google-apps.spreadsheet': 'application/pdf',
+              'application/vnd.google-apps.presentation': 'application/pdf',
+              'application/vnd.google-apps.drawing': 'application/pdf'
+            };
+
+            const exportMimeType = exportFormats[fileMetadata.mimeType] || 'application/pdf';
+            
+            const response = await drive.files.export({
+              fileId: input.fileId,
+              mimeType: exportMimeType
+            }, {
+              responseType: 'arraybuffer'
+            });
+            
+            return Buffer.from(response.data as ArrayBuffer);
+          } else {
+            // Handle regular binary files
+            const response = await drive.files.get({
+              fileId: input.fileId,
+              alt: 'media',
+              ...(input.mimeType ? { mimeType: input.mimeType } : {})
+            }, {
+              responseType: 'arraybuffer'
+            });
+            
+            return Buffer.from(response.data as ArrayBuffer);
+          }
         });
       });
       
@@ -268,7 +293,15 @@ export async function getTokensFromCode(code: string): Promise<{
   expiresAt: number;
 }> {
   try {
-    const { tokens } = await oauth2Client.getToken(code);
+    // Exchange the code for tokens
+    const response = await oauth2Client.getToken(code);
+    const tokens = response.tokens;
+
+    console.log('Token exchange response:', {
+      access_token: tokens.access_token ? '(token present)' : '(no token)',
+      refresh_token: tokens.refresh_token ? '(token present)' : '(no token)',
+      expiry_date: tokens.expiry_date
+    });
     
     if (!tokens.refresh_token) {
       throw createError(
@@ -296,4 +329,23 @@ export async function getTokensFromCode(code: string): Promise<{
       { originalError: (error as Error).message }
     );
   }
+}
+
+/**
+ * Set OAuth2 credentials directly
+ * @param refreshToken Refresh token
+ * @param accessToken Access token
+ * @param expiryDate Token expiry date
+ */
+export function setOAuth2Credentials(
+  refreshToken: string,
+  accessToken?: string,
+  expiryDate?: number
+): void {
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken,
+    access_token: accessToken,
+    expiry_date: expiryDate || Date.now() + 3600 * 1000
+  });
+  console.log('OAuth2 credentials set successfully');
 }
