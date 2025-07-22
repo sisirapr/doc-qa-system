@@ -28,6 +28,9 @@ console.log('Google Drive OAuth2 client initialized');
 // Circuit breaker for Google Drive API
 const circuitBreaker = new CircuitBreaker();
 
+// Supported MIME types for document processing
+const SUPPORTED_MIME_TYPES = ['text/plain'];
+
 /**
  * Set OAuth2 credentials
  * @param refreshToken Google Drive refresh token
@@ -72,14 +75,32 @@ export async function googleDriveListFiles(
       
       const [result, executionTime] = await measureExecutionTime(async () => {
         return await withRetry(async () => {
+          // Default to supported MIME types only, but allow override via input.mimeTypes
+          const mimeTypesToFilter = input.mimeTypes && input.mimeTypes.length > 0 
+            ? input.mimeTypes 
+            : SUPPORTED_MIME_TYPES;
+          
+          // Build query string
+          let query = 'trashed = false';
+          
+          // Add folder filter if specified
+          if (input.folderId) {
+            query += ` and '${input.folderId}' in parents`;
+          }
+          
+          // Add MIME type filter
+          if (mimeTypesToFilter.length > 0) {
+            query += ` and (${mimeTypesToFilter.map(type => `mimeType='${type}'`).join(' or ')})`;
+          }
+          
+          console.log(`Google Drive query: ${query}`);
+          console.log(`Filtering for MIME types: ${mimeTypesToFilter.join(', ')}`);
+          
           const response = await drive.files.list({
-            q: input.folderId ? `'${input.folderId}' in parents and trashed = false` : 'trashed = false',
+            q: query,
             pageSize: input.maxResults || 100,
             fields: 'nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, webViewLink)',
-            orderBy: 'modifiedTime desc',
-            ...(input.mimeTypes && input.mimeTypes.length > 0
-              ? { q: `mimeType in ('${input.mimeTypes.join("','")}')` }
-              : {})
+            orderBy: 'modifiedTime desc'
           });
           
           return response.data;
@@ -88,8 +109,25 @@ export async function googleDriveListFiles(
       
       console.log(`Google Drive list files completed in ${executionTime}ms`);
       
+      // Filter results to ensure only supported types are returned
+      const supportedFiles = (result.files || []).filter(file => {
+        const mimeType = file.mimeType || '';
+        
+        // Check if file type is in supported MIME types
+        const isSupported = SUPPORTED_MIME_TYPES.includes(mimeType);
+        
+        // Log unsupported files for future reference
+        if (!isSupported && mimeType) {
+          console.log(`Skipping unsupported file type: ${file.name} (${mimeType})`);
+        }
+        
+        return isSupported;
+      });
+      
+      console.log(`Found ${(result.files || []).length} total files, ${supportedFiles.length} supported files`);
+      
       return {
-        files: (result.files || []).map(file => ({
+        files: supportedFiles.map(file => ({
           id: file.id || '',
           name: file.name || '',
           mimeType: file.mimeType || '',
@@ -99,7 +137,24 @@ export async function googleDriveListFiles(
           webViewLink: file.webViewLink || ''
         })),
         // Only include nextPageToken if it exists
-        ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {})
+        ...(result.nextPageToken ? { nextPageToken: result.nextPageToken } : {}),
+        // Add metadata about filtering
+        metadata: {
+          totalFiles: (result.files || []).length,
+          supportedFiles: supportedFiles.length,
+          filteredMimeTypes: SUPPORTED_MIME_TYPES,
+          // Keep other MIME types available but disabled for future use
+          availableMimeTypes: {
+            enabled: SUPPORTED_MIME_TYPES,
+            disabled: [
+              'application/pdf',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'application/vnd.google-apps.document',
+              'application/vnd.google-apps.spreadsheet',
+              'application/vnd.google-apps.presentation'
+            ]
+          }
+        }
       };
     });
   } catch (error) {

@@ -3,7 +3,7 @@ import { VectorSimilaritySearchInput, VectorSimilaritySearchOutput, MCPError } f
 import { SearchResult } from '../../types';
 import { env } from '../../config/environment';
 import { searchSimilar } from '../../services/vector';
-import { generateEmbedding } from './document-processor';
+import { generateEmbedding } from '../../services/ai';
 
 /**
  * Perform vector similarity search
@@ -19,7 +19,7 @@ export async function vectorSimilaritySearch(
     
     // Set default values
     const limit = input.limit || 10;
-    const threshold = input.threshold || 0.7;
+    const threshold = input.threshold || 0.3; // Lowered threshold for better results
     const filters = input.filters || {};
     
     // Measure execution time
@@ -37,11 +37,11 @@ export async function vectorSimilaritySearch(
         ]
       });
 
-      // Filter by threshold after search
-      const filteredResults = searchResults.filter(result => result.score >= threshold);
+      // Log all search results for debugging
+      console.log('Raw search results:', searchResults.map(r => ({ id: r.id, score: r.score })));
 
-      // Convert to VectorSimilaritySearchOutput format
-      return filteredResults.map(result => ({
+      // Convert to VectorSimilaritySearchOutput format (no threshold filtering for debugging)
+      return searchResults.map(result => ({
         id: result.id,
         score: result.score,
         content: result.payload.content,

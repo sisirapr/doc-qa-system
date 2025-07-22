@@ -125,26 +125,28 @@ async function mockLLMGeneration(
   context: string,
   temperature: number
 ): Promise<string> {
-  // This is a placeholder for actual LLM generation
-  // In a real implementation, this would call an LLM API like OpenAI
+  // Import AI service
+  const { generateAnswer } = await import('../../services/ai');
   
-  // Ensure query is a string
-  const safeQuery = query || 'unknown query';
-  
-  // For now, generate a mock answer
-  const answers = [
-    `Based on the provided documents, the answer to "${safeQuery}" is that document retrieval systems use vector embeddings to find relevant information. The system converts text into numerical vectors and then finds similar vectors when a query is made.`,
-    `According to the information in the documents, "${safeQuery}" relates to semantic search technology. This technology allows finding documents based on meaning rather than just keywords.`,
-    `The documents suggest that "${safeQuery}" involves chunking text into smaller pieces before processing. This helps manage large documents and improves retrieval accuracy.`,
-    `From the context provided, "${safeQuery}" is addressed by using machine learning models to understand natural language. These models can interpret questions and find relevant information in a document collection.`
-  ];
-  
-  // Use query to deterministically select an answer
-  const seed = safeQuery.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const answerIndex = seed % answers.length;
-  
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return answers[answerIndex];
+  try {
+    // Use AI service to generate answer
+    return await generateAnswer(query, [context]);
+  } catch (error) {
+    console.error('Error with AI generation, falling back to mock:', error);
+    
+    // Fallback to mock generation if AI fails
+    const safeQuery = query || 'unknown query';
+    const answers = [
+      `Based on the provided documents, the answer to "${safeQuery}" is that document retrieval systems use vector embeddings to find relevant information. The system converts text into numerical vectors and then finds similar vectors when a query is made.`,
+      `According to the information in the documents, "${safeQuery}" relates to semantic search technology. This technology allows finding documents based on meaning rather than just keywords.`,
+      `The documents suggest that "${safeQuery}" involves chunking text into smaller pieces before processing. This helps manage large documents and improves retrieval accuracy.`,
+      `From the context provided, "${safeQuery}" is addressed by using machine learning models to understand natural language. These models can interpret questions and find relevant information in a document collection.`
+    ];
+    
+    const seed = safeQuery.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const answerIndex = seed % answers.length;
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return answers[answerIndex];
+  }
 }

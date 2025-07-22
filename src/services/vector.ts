@@ -82,9 +82,13 @@ export async function upsertVectors(
       throw new Error(`Collection ${COLLECTION_NAME} does not exist`);
     }
     
-    // Normalize vectors before mapping
+    // Normalize vectors before mapping (avoid division by zero)
     const normalizedVectors = vectors.map(vector => {
       const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+      if (magnitude === 0 || !isFinite(magnitude)) {
+        console.warn('Zero or invalid magnitude detected, using original vector');
+        return vector;
+      }
       return vector.map(val => val / magnitude);
     });
     
@@ -117,50 +121,36 @@ export async function upsertVectors(
 
     console.log('Upserting points:', JSON.stringify(points[0], null, 2));
 
-    // Upsert points one at a time with retries
-    for (const point of points) {
-      let retries = 3;
-      while (retries > 0) {
-        try {
-          console.log('Upserting point:', JSON.stringify(point, null, 2));
-          console.log('Vector size:', point.vector.length);
-          console.log('Vector sample:', point.vector.slice(0, 5));
-          
-          const response = await qdrantClient.upsert(COLLECTION_NAME, {
-            wait: true,
-            points: [
-              {
-                id: point.id,
-                vector: point.vector,
-                payload: point.payload
-              }
-            ]
-          });
-          console.log('Upsert response:', JSON.stringify(response, null, 2));
-          console.log('Upsert response:', JSON.stringify(response, null, 2));
-          
-          // Verify point was inserted
-          const retrieved = await qdrantClient.retrieve(COLLECTION_NAME, { 
-            ids: [point.id],
-            with_payload: true,
-            with_vector: true
-          });
-          console.log('Retrieved point:', retrieved.length > 0 ? JSON.stringify(retrieved[0], null, 2) : 'Not found');
-          
-          if (retrieved.length > 0) {
-            console.log('Point verified successfully');
-            break;
-          }
-          throw new Error('Point verification failed');
-        } catch (error) {
-          console.error('Error upserting point:', error);
-          console.error('Error details:', error.message);
-          console.error('Error stack:', error.stack);
-          retries--;
-          if (retries === 0) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+    // Upsert all points at once (simplified approach)
+    try {
+      console.log('Upserting', points.length, 'points to collection:', COLLECTION_NAME);
+      console.log('First point sample:', {
+        id: points[0].id,
+        vectorSize: points[0].vector.length,
+        vectorSample: points[0].vector.slice(0, 5),
+        payload: points[0].payload
+      });
+      
+      const response = await qdrantClient.upsert(COLLECTION_NAME, {
+        wait: true,
+        points: points.map(point => ({
+          id: point.id,
+          vector: point.vector,
+          payload: point.payload
+        }))
+      });
+      
+      console.log('Upsert response:', JSON.stringify(response, null, 2));
+      
+      if (response.status !== 'completed') {
+        throw new Error(`Upsert failed with status: ${response.status}`);
       }
+      
+      console.log('Successfully upserted', points.length, 'points');
+    } catch (error) {
+      console.error('Error upserting points:', error);
+      console.error('Error details:', error.message);
+      throw error;
     }
 
     return points.length;
@@ -188,8 +178,17 @@ export async function searchSimilar(
   filter?: Record<string, any>
 ): Promise<SearchResult[]> {
   try {
+    // Normalize the search vector to match stored vectors
+    const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    const normalizedVector = magnitude === 0 || !isFinite(magnitude) 
+      ? vector 
+      : vector.map(val => val / magnitude);
+    
+    console.log('Search vector dimensions:', vector.length);
+    console.log('Search vector normalized:', normalizedVector.slice(0, 5));
+    
     const response = await qdrantClient.search(COLLECTION_NAME, {
-      vector,
+      vector: normalizedVector,
       limit,
       filter,
       with_payload: true,

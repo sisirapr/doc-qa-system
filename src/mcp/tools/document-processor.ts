@@ -2,6 +2,8 @@ import { createError, measureExecutionTime, validateInput } from '../utils/mcp-h
 import { DocumentChunkAndEmbedInput, DocumentChunkAndEmbedOutput, MCPError, EmbeddedChunk } from '../types/mcp-types';
 import { env } from '../../config/environment';
 import { VECTOR_SIZE } from '../../config/qdrant';
+import { generateEmbedding as aiGenerateEmbedding } from '../../services/ai';
+import { upsertVectors } from '../../services/vector';
 
 /**
  * Generate embedding for text
@@ -10,9 +12,8 @@ import { VECTOR_SIZE } from '../../config/qdrant';
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    // TODO: Replace with real embedding generation using OpenAI API
-    // For now, generate a mock embedding vector
-    return Array.from({ length: VECTOR_SIZE }, () => Math.random() * 2 - 1);
+    // Use AI service for embedding generation
+    return await aiGenerateEmbedding(text);
   } catch (error) {
     console.error('Error generating embedding:', error);
     throw createError(
@@ -55,6 +56,25 @@ export async function documentChunkAndEmbed(
         chunk.vector = embeddings[index];
         chunk.metadata.totalChunks = chunks.length;
       });
+      
+      // Store vectors in Qdrant
+      console.log('Storing vectors in Qdrant...');
+      const payloads = chunks.map(chunk => ({
+        document_id: chunk.documentId,
+        document_name: input.documentId,
+        chunk_index: chunk.index,
+        content: chunk.content,
+        metadata: {
+          file_size: input.content.length,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          google_drive_id: '',
+          mime_type: input.mimeType || 'text/plain'
+        }
+      }));
+      
+      const storedCount = await upsertVectors(embeddings, payloads);
+      console.log(`Successfully stored ${storedCount} vectors in Qdrant`);
       
       return { chunks };
     });

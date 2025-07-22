@@ -14,8 +14,10 @@ const envSchema = z.object({
   GOOGLE_DRIVE_REDIRECT_URI: z.string().url(),
 
   // LLM Provider
-  OPENAI_API_KEY: z.string(),
-  LLM_PROVIDER: z.enum(['openai', 'anthropic']).default('openai'),
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  LLM_PROVIDER: z.enum(['openai', 'anthropic']).default('anthropic'),
+  LLM_MODEL: z.string().default('claude-3-haiku-20240307'),
   EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
 
   // Application

@@ -17,7 +17,7 @@ console.log('Qdrant client initialized with config:', {
 
 // Collection configuration
 export const COLLECTION_NAME = 'document_chunks';
-export const VECTOR_SIZE = 10; // Size of our embeddings
+export const VECTOR_SIZE = 1536; // Size of OpenAI text-embedding-3-small embeddings
 
 // Collection configuration
 export const COLLECTION_CONFIG = {
