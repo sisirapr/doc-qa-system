@@ -13,7 +13,11 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: [
+    env.CORS_ORIGIN,
+    'http://localhost:3002', // Frontend development server
+    'http://localhost:3001', // Alternative frontend port
+  ],
   credentials: true
 }));
 
