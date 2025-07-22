@@ -88,6 +88,56 @@ router.post('/ingest', async (req, res) => {
 });
 
 /**
+ * GET /api/documents/stats
+ * Get document and vector statistics
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    // Call MCP server to get vector statistics
+    const response = await axios.post(`${MCP_SERVER_URL}/tools/vector_stats`, {});
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to get statistics');
+    }
+
+    const stats = response.data.data;
+
+    res.json({
+      success: true,
+      data: {
+        documents: stats.totalDocuments || 0,
+        vectors: stats.totalVectors || 0,
+        collections: stats.collections || 0,
+        lastUpdated: stats.lastUpdated || new Date().toISOString()
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id']
+      }
+    });
+  } catch (error) {
+    const err = error as any;
+    console.error('Statistics fetch error:', err);
+    
+    // Return default stats if MCP server is not available
+    res.json({
+      success: true,
+      data: {
+        documents: 0,
+        vectors: 0,
+        collections: 0,
+        lastUpdated: new Date().toISOString()
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'],
+        note: 'Default statistics returned due to MCP server unavailability'
+      }
+    });
+  }
+});
+
+/**
  * GET /api/documents
  * List processed documents (placeholder - would need database implementation)
  */

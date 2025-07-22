@@ -82,6 +82,13 @@ export const documentsApi = {
     }),
   
   list: () => apiRequest(API_ENDPOINTS.documents.list),
+  
+  getStats: () => apiRequest<{
+    documents: number;
+    vectors: number;
+    collections: number;
+    lastUpdated: string;
+  }>(API_ENDPOINTS.documents.list + '/stats'),
 };
 
 // Chat API

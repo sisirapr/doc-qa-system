@@ -39,7 +39,11 @@ interface SyncResult {
   };
 }
 
-export default function GoogleDriveSync() {
+interface GoogleDriveSyncProps {
+  onSyncComplete?: () => void;
+}
+
+export default function GoogleDriveSync({ onSyncComplete }: GoogleDriveSyncProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [refreshToken, setRefreshToken] = useState<string>('');
@@ -139,6 +143,11 @@ export default function GoogleDriveSync() {
       }) as { data: SyncResult };
 
       setSyncResult(result.data);
+      
+      // Call the callback to refresh statistics
+      if (onSyncComplete) {
+        onSyncComplete();
+      }
       
     } catch (err: any) {
       setError(err.message || 'Failed to sync Google Drive documents');

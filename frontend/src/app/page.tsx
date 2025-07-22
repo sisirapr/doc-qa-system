@@ -14,6 +14,13 @@ import {
   Loader2
 } from 'lucide-react';
 import { healthApi, chatApi, documentsApi } from '@/lib/api';
+
+interface DocumentStats {
+  documents: number;
+  vectors: number;
+  collections: number;
+  lastUpdated: string;
+}
 import GoogleDriveSync from '@/components/GoogleDriveSync';
 
 interface SystemHealth {
@@ -51,10 +58,31 @@ export default function HomePage() {
   const [documentContent, setDocumentContent] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [stats, setStats] = useState<DocumentStats>({
+    documents: 0,
+    vectors: 0,
+    collections: 0,
+    lastUpdated: ''
+  });
+  const [queryCount, setQueryCount] = useState(0);
 
   useEffect(() => {
     checkSystemHealth();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const statsData = await documentsApi.getStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to fetch statistics:', error);
+    }
+  };
+
+  const refreshStats = () => {
+    fetchStats();
+  };
 
   const checkSystemHealth = async () => {
     try {
@@ -77,6 +105,8 @@ export default function HomePage() {
       const result = await chatApi.query(query);
       setAnswer(result.answer);
       setSources(result.sources || []);
+      // Increment query count
+      setQueryCount(prev => prev + 1);
     } catch (error) {
       console.error('Query failed:', error);
       setAnswer('Sorry, I encountered an error while processing your question. Please try again.');
@@ -271,7 +301,7 @@ export default function HomePage() {
       </div>
 
       {/* Google Drive Integration */}
-      <GoogleDriveSync />
+      <GoogleDriveSync onSyncComplete={refreshStats} />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -280,7 +310,7 @@ export default function HomePage() {
             <FileText className="w-8 h-8 text-blue-500" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Documents</p>
-              <p className="text-lg font-semibold text-gray-900">0</p>
+              <p className="text-lg font-semibold text-gray-900">{stats.documents}</p>
             </div>
           </div>
         </div>
@@ -290,7 +320,7 @@ export default function HomePage() {
             <MessageSquare className="w-8 h-8 text-green-500" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Queries</p>
-              <p className="text-lg font-semibold text-gray-900">0</p>
+              <p className="text-lg font-semibold text-gray-900">{queryCount}</p>
             </div>
           </div>
         </div>
@@ -300,7 +330,7 @@ export default function HomePage() {
             <Database className="w-8 h-8 text-purple-500" />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Vectors</p>
-              <p className="text-lg font-semibold text-gray-900">0</p>
+              <p className="text-lg font-semibold text-gray-900">{stats.vectors}</p>
             </div>
           </div>
         </div>

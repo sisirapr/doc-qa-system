@@ -2,6 +2,7 @@ import { googleDriveListFiles, googleDriveDownloadFile } from './google-drive';
 import { documentChunkAndEmbed } from './document-processor';
 import { vectorSimilaritySearch } from './vector-search';
 import { documentQAQuery } from './document-qa';
+import { getVectorStats } from './vector-stats';
 
 // Export all tools
 export const tools = {
@@ -16,7 +17,10 @@ export const tools = {
   vector_similarity_search: vectorSimilaritySearch,
   
   // Document Q&A tools
-  document_qa_query: documentQAQuery
+  document_qa_query: documentQAQuery,
+  
+  // Vector statistics tools
+  vector_stats: getVectorStats
 };
 
 // Export tool types
