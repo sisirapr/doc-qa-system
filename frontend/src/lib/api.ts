@@ -89,6 +89,16 @@ export const documentsApi = {
     collections: number;
     lastUpdated: string;
   }>(API_ENDPOINTS.documents.list + '/stats'),
+  
+  reset: () => apiRequest<{
+    status: string;
+    message: string;
+    deletedDocuments: number;
+    deletedVectors: number;
+    resetTime: string;
+  }>(API_ENDPOINTS.documents.list + '/reset', {
+    method: 'POST',
+  }),
 };
 
 // Chat API

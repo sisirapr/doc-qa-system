@@ -1,8 +1,11 @@
 import { Router } from 'express';
 import { googleDriveService } from '../../services/google-drive';
-import { documentChunkAndEmbed } from '../../mcp/tools/document-processor';
+import axios from 'axios';
 
 const router = Router();
+
+// MCP Server URL
+const MCP_SERVER_URL = 'http://localhost:3001';
 
 /**
  * POST /api/sync/google-drive
@@ -95,13 +98,28 @@ router.post('/google-drive', async (req, res) => {
           continue;
         }
 
-        // Process document through MCP tool
+        // Process document through MCP server
         const documentId = `gdrive_${file.id}`;
-        const processResult = await documentChunkAndEmbed({
+        console.log(`Calling MCP server for document: ${documentId}`);
+        console.log(`Content length: ${content.length} characters`);
+        console.log(`MIME type: ${file.mimeType}`);
+        
+        const mcpResponse = await axios.post(`${MCP_SERVER_URL}/tools/document_chunk_and_embed`, {
           documentId,
           content,
           mimeType: file.mimeType
         });
+
+        console.log(`MCP response status: ${mcpResponse.status}`);
+        console.log(`MCP response success: ${mcpResponse.data.success}`);
+
+        if (!mcpResponse.data.success) {
+          console.error(`MCP processing failed for ${file.name}:`, mcpResponse.data.error);
+          throw new Error(mcpResponse.data.error?.message || 'Failed to process document');
+        }
+
+        const processResult = mcpResponse.data.data;
+        console.log(`Successfully processed ${file.name}: ${processResult.chunks.length} chunks created`);
 
         results.push({
           fileId: file.id,
@@ -327,13 +345,19 @@ router.post('/google-drive/folder/:folderId', async (req, res) => {
           continue;
         }
 
-        // Process document through MCP tool
+        // Process document through MCP server
         const documentId = `gdrive_${file.id}`;
-        const processResult = await documentChunkAndEmbed({
+        const mcpResponse = await axios.post(`${MCP_SERVER_URL}/tools/document_chunk_and_embed`, {
           documentId,
           content,
           mimeType: file.mimeType
         });
+
+        if (!mcpResponse.data.success) {
+          throw new Error(mcpResponse.data.error?.message || 'Failed to process document');
+        }
+
+        const processResult = mcpResponse.data.data;
 
         results.push({
           fileId: file.id,

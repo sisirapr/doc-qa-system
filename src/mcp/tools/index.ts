@@ -3,6 +3,7 @@ import { documentChunkAndEmbed } from './document-processor';
 import { vectorSimilaritySearch } from './vector-search';
 import { documentQAQuery } from './document-qa';
 import { getVectorStats } from './vector-stats';
+import { resetKnowledgeBase } from './reset-knowledge-base';
 
 // Export all tools
 export const tools = {
@@ -20,7 +21,10 @@ export const tools = {
   document_qa_query: documentQAQuery,
   
   // Vector statistics tools
-  vector_stats: getVectorStats
+  vector_stats: getVectorStats,
+  
+  // Knowledge base management tools
+  reset_knowledge_base: resetKnowledgeBase
 };
 
 // Export tool types

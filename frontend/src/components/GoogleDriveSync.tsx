@@ -66,13 +66,14 @@ export default function GoogleDriveSync({ onSyncComplete }: GoogleDriveSyncProps
       // Listen for the authentication result
       const handleMessage = (event: MessageEvent) => {
         if (event.data.type === 'GOOGLE_DRIVE_AUTH_SUCCESS') {
-          // Authentication successful
-          setRefreshToken(event.data.refreshToken);
-          setIsAuthenticated(true);
-          setIsConnecting(false);
-          
-          // Automatically start syncing documents
-          handleSync();
+      // Authentication successful
+      setRefreshToken(event.data.refreshToken);
+      setIsAuthenticated(true);
+      setIsConnecting(false);
+      setError(''); // Clear any previous errors
+      
+      // Automatically start syncing documents
+      handleSync();
           
           // Clean up
           window.removeEventListener('message', handleMessage);
@@ -116,6 +117,7 @@ export default function GoogleDriveSync({ onSyncComplete }: GoogleDriveSyncProps
       setIsAuthenticated(true);
       setShowAuthCodeInput(false);
       setAuthCode('');
+      setError(''); // Clear any previous errors
       
     } catch (err) {
       setError('Failed to exchange authorization code. Please try again.');

@@ -176,6 +176,54 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * POST /api/documents/reset
+ * Reset the entire knowledge base (clear all documents and vectors)
+ */
+router.post('/reset', async (req, res) => {
+  try {
+    // Call MCP server to reset the knowledge base
+    const response = await axios.post(`${MCP_SERVER_URL}/tools/reset_knowledge_base`, {});
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to reset knowledge base');
+    }
+
+    const result = response.data.data;
+
+    res.json({
+      success: true,
+      data: {
+        status: 'reset_complete',
+        message: 'Knowledge base has been successfully reset',
+        deletedDocuments: result.deletedDocuments || 0,
+        deletedVectors: result.deletedVectors || 0,
+        resetTime: new Date().toISOString()
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id']
+      }
+    });
+  } catch (error) {
+    const err = error as any;
+    console.error('Knowledge base reset error:', err);
+    
+    res.status(err.response?.status || 500).json({
+      success: false,
+      error: {
+        message: err.message || 'Failed to reset knowledge base',
+        code: 'KNOWLEDGE_BASE_RESET_ERROR',
+        details: err.response?.data
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id']
+      }
+    });
+  }
+});
+
+/**
  * DELETE /api/documents/:documentId
  * Delete a document (placeholder)
  */

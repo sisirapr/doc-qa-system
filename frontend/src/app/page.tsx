@@ -65,6 +65,9 @@ export default function HomePage() {
     lastUpdated: ''
   });
   const [queryCount, setQueryCount] = useState(0);
+  const [queryError, setQueryError] = useState<string>('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState<string>('');
 
   useEffect(() => {
     checkSystemHealth();
@@ -102,14 +105,16 @@ export default function HomePage() {
 
     try {
       setIsQuerying(true);
+      setQueryError(''); // Clear previous errors
       const result = await chatApi.query(query);
       setAnswer(result.answer);
       setSources(result.sources || []);
       // Increment query count
       setQueryCount(prev => prev + 1);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Query failed:', error);
-      setAnswer('Sorry, I encountered an error while processing your question. Please try again.');
+      setQueryError(error.message || 'Failed to process your question. Please try again.');
+      setAnswer('');
       setSources([]);
     } finally {
       setIsQuerying(false);
@@ -131,6 +136,36 @@ export default function HomePage() {
       alert('Failed to upload document. Please try again.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleResetKnowledgeBase = async () => {
+    if (!confirm('Are you sure you want to reset the entire knowledge base? This will delete all documents and vectors permanently.')) {
+      return;
+    }
+
+    try {
+      setIsResetting(true);
+      setResetError('');
+      const result = await documentsApi.reset();
+      
+      // Refresh statistics after reset
+      await fetchStats();
+      
+      // Reset query count
+      setQueryCount(0);
+      
+      // Clear any existing answers
+      setAnswer('');
+      setSources([]);
+      
+      alert(`Knowledge base reset successfully!\n\nDeleted:\n- ${result.deletedDocuments} documents\n- ${result.deletedVectors} vectors`);
+      
+    } catch (error: any) {
+      console.error('Reset failed:', error);
+      setResetError(error.message || 'Failed to reset knowledge base. Please try again.');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -198,7 +233,10 @@ export default function HomePage() {
             <div>
               <textarea
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (queryError) setQueryError(''); // Clear error when user starts typing
+                }}
                 placeholder="Ask a question about your documents..."
                 className="w-full p-3 bg-white text-gray-800 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
                 rows={3}
@@ -222,6 +260,13 @@ export default function HomePage() {
               )}
             </button>
           </form>
+
+          {queryError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center">
+              <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+              <span className="text-red-700 text-sm">{queryError}</span>
+            </div>
+          )}
 
           {answer && (
             <div className="mt-6 p-4 bg-blue-50 rounded-md">
@@ -302,6 +347,64 @@ export default function HomePage() {
 
       {/* Google Drive Integration */}
       <GoogleDriveSync onSyncComplete={refreshStats} />
+
+      {/* Reset Knowledge Base */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Database className="w-5 h-5 mr-2" />
+          Knowledge Base Management
+        </h2>
+        
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+          <div className="flex items-center mb-2">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            <h3 className="font-medium text-red-900">Danger Zone</h3>
+          </div>
+          <p className="text-sm text-red-700 mb-4">
+            Resetting the knowledge base will permanently delete all documents, vectors, and embeddings. 
+            This action cannot be undone.
+          </p>
+          
+          {resetError && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-md flex items-center">
+              <AlertCircle className="w-4 h-4 text-red-600 mr-2" />
+              <span className="text-red-800 text-sm">{resetError}</span>
+            </div>
+          )}
+          
+          <button
+            onClick={handleResetKnowledgeBase}
+            disabled={isResetting}
+            className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            {isResetting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Resetting...
+              </>
+            ) : (
+              <>
+                <Database className="w-4 h-4 mr-2" />
+                Reset Knowledge Base
+              </>
+            )}
+          </button>
+        </div>
+        
+        <div className="text-sm text-gray-600">
+          <p className="mb-2"><strong>What this does:</strong></p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li>Deletes all stored documents and their content</li>
+            <li>Removes all vector embeddings from the database</li>
+            <li>Clears the document collection completely</li>
+            <li>Resets statistics to zero</li>
+            <li>Recreates a fresh, empty collection</li>
+          </ul>
+          <p className="mt-3 text-xs text-gray-500">
+            After reset, you can re-sync documents from Google Drive or upload new content.
+          </p>
+        </div>
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
