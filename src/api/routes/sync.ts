@@ -22,7 +22,7 @@ router.post('/google-drive', async (req, res) => {
     } = req.body;
 
     if (!accessToken && !refreshToken) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: {
           message: 'Access token or refresh token is required',
@@ -33,6 +33,7 @@ router.post('/google-drive', async (req, res) => {
           requestId
         }
       });
+      return;
     }
 
     // Set credentials for Google Drive service
@@ -48,7 +49,7 @@ router.post('/google-drive', async (req, res) => {
     // Validate credentials
     const isValid = await googleDriveService.validateCredentials();
     if (!isValid) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: {
           message: 'Invalid Google Drive credentials',
@@ -59,6 +60,7 @@ router.post('/google-drive', async (req, res) => {
           requestId
         }
       });
+      return;
     }
 
     console.log(`Starting Google Drive sync - Folder: ${folderId || 'root'}, Max files: ${maxFiles}`);
@@ -252,7 +254,7 @@ router.post('/google-drive/folder/:folderId', async (req, res) => {
     } = req.body;
 
     if (!accessToken && !refreshToken) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: {
           message: 'Access token or refresh token is required',
@@ -263,6 +265,7 @@ router.post('/google-drive/folder/:folderId', async (req, res) => {
           requestId
         }
       });
+      return;
     }
 
     // Set credentials for Google Drive service
@@ -278,7 +281,7 @@ router.post('/google-drive/folder/:folderId', async (req, res) => {
     // Validate credentials
     const isValid = await googleDriveService.validateCredentials();
     if (!isValid) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: {
           message: 'Invalid Google Drive credentials',
@@ -289,6 +292,7 @@ router.post('/google-drive/folder/:folderId', async (req, res) => {
           requestId
         }
       });
+      return;
     }
 
     console.log(`Starting Google Drive folder sync - Folder: ${folderId}, Max files: ${maxFiles}`);
